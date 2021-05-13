@@ -1,32 +1,8 @@
 #include <stdlib.h>
 #include <Windows.h>
+#include <WinUser.h>
 
-// ALL THE COLORS POSSIBLE ON THE CONSOLE
-enum Colors{
-    BLACK,
-    BLUE,
-    GREEN,
-    AQUA,
-    RED,
-    PURPLE,
-    YELLOW,
-    WHITE,
-    GRAY,
-    LBLUE,
-    LGREEN,
-    LAQUA,
-    LRED,
-    LPURPLE,
-    LYELLOW,
-    BWHITE,
-};
-
-// ASCII CODES FOR BOX DRAWING CHARACTERS
-enum Characters{
-    FULL_PIXEL = 219,
-    HALF_PIXEL = 178,
-    TRANS_PIXEL = 176
-};
+#include "includes.h"
 
 
 // STRUCT CONTAINING ALL INFO NEEDED FOR THE CONSOLE
@@ -36,17 +12,64 @@ typedef struct Console
     size_t bufferWidth;      // SIZE OF ONE HORIZONTAL LINE
     size_t bufferHeight;     // SIZE OF ONE VERTICAL LINE
     CHAR_INFO *screenBuffer; // ARRAY OF CHARACTERS THAT WILL BE DRAWN TO THE SCREEN
+    WORD backgroundColor;
+
+    int running;             // IS THE CONSOLE CURRENTLY RUNNING
+
+    int keys[0xFF];
 
     // PRIVATE
     HANDLE hConsole;         // POINTER TO THE CONSOLE OBJECT NEEDED BY WINDOWS
     SMALL_RECT dwBytesWritten;
     COORD dwBufferSize;
+    int previousKeys[0xFF];
 
 } Console;
 
 
-void StartConsole(Console *console)
+typedef struct Window
 {
+    int x, y, w, h;
+    WORD color;
+    const char *title;
+    Console *console;
+
+} Window;
+
+
+typedef struct Menu
+{
+    int x, y;
+    WORD color, bgColor;
+
+    int numberOfItems;
+    const char **items;
+    Console *console;
+    int selected;
+    int wrapMode;
+
+} Menu;
+
+
+void ConsoleCreateMenu(Menu *menu, const char **items, Console *console, int wrapMode)
+{
+    menu->items = (const char **)malloc(sizeof(const char *) * menu->numberOfItems);
+    menu->items = items;
+    menu->console = console;
+    menu->wrapMode = wrapMode;
+    menu->selected = 0;
+}
+
+
+// FORWARD DECLARATIONS
+void DrawString(Console *console, const char *string, int x, int y, WORD Color);
+void Clear(Console *console);
+
+
+void CreateConsole(Console *console)
+{
+    // ***TODO MAKE AN IN PLACE CONSOLE APP BY GETTING THE CURRENT SCREEN BUFFER ALONG WITH THE SIZE AND PRITING THAT *** //
+
     // CREATE A NEW CONSOLE WE CAN WRITE TO
     console->hConsole = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
     SetConsoleActiveScreenBuffer(console->hConsole);
@@ -63,11 +86,12 @@ void StartConsole(Console *console)
 
     // ALLOCATE MEMORY FOR THE ARRAY OF CHARACTERS ON THE CONSOLE
     console->screenBuffer = (CHAR_INFO *)malloc(sizeof(CHAR_INFO) * console->bufferSize);
+    console->backgroundColor = 7;
 
     // MAKE SURE SCREEN IS CLEAR
     for(int i = 0; i < console->bufferSize; i++)
     {
-        console->screenBuffer[i].Char.UnicodeChar = ' ';
+        console->screenBuffer[i].Char.UnicodeChar = ' '; 
         console->screenBuffer[i].Attributes = 7;
     }
 
@@ -77,6 +101,7 @@ void StartConsole(Console *console)
     COORD dwBufferStart = {0, 0};
     WriteConsoleOutput(console->hConsole, console->screenBuffer, console->dwBufferSize, dwBufferStart, &console->dwBytesWritten);
 
+    console->running = 1;
 }
 
 
@@ -84,6 +109,18 @@ void StartConsole(Console *console)
 void FreeConsoleMemory(Console *console)
 {
     free(console->screenBuffer);
+    FreeConsole();
+}
+
+
+void UpdateKeyState(Console *console)
+{
+    for(int i = 0; i < 0xFF; i++)
+    {
+        int previous = console->previousKeys[i];
+        console->previousKeys[i] = (GetAsyncKeyState(i) & 0x8000);
+        console->keys[i] = console->previousKeys[i] && !previous;
+    }
 }
 
 
@@ -116,13 +153,92 @@ void PlaceChar(Console *console, wchar_t character, int x, int y, WORD Color)
 }
 
 
+void ConsoleFillRect(Console *console, wchar_t character, int x, int y, int w, int h, WORD color)
+{
+    for(int i = x; i < x+w; i++)
+    {
+        for(int j = y; j < y+h; j++)
+        {
+            PlaceChar(console, character, i, j, color);
+        }
+    }
+}
+
+
+void DrawWindow(Window window)
+{
+    for(int i = window.x; i <= window.x + window.w; i++)
+    {
+        for(int j = window.y; j <= window.y + window.h; j++)
+        {
+            if(j == window.y || j == window.y + window.h) PlaceChar(window.console, Horizontal, i, j, window.color);
+            if(i == window.x || i == window.x + window.w) PlaceChar(window.console, Vertical, i, j, window.color);
+        }
+    }
+    PlaceChar(window.console, LTCorner, window.x, window.y, window.color);
+    PlaceChar(window.console, RTCorner, window.x + window.w, window.y, window.color);
+    PlaceChar(window.console, LBCorner, window.x, window.y + window.h, window.color);
+    PlaceChar(window.console, RBCorner, window.x + window.w , window.y + window.h, window.color);
+
+    if(window.title != NULL)
+    {
+        DrawString(window.console, window.title, window.x + 1, window.y, window.color);
+    }
+}
+
+
+void DrawMenu(Menu *menu)
+{   
+    if(menu->wrapMode == MENU_WRAP){
+        menu->selected = menu->selected % menu->numberOfItems;
+        if(menu->selected < 0) menu->selected = menu->numberOfItems-1;
+    }
+    else{
+        if(menu->selected < 0) menu->selected = 0;
+        if(menu->selected >= menu->numberOfItems) menu->selected = menu->numberOfItems-1;
+    }
+
+
+    int i = 0;
+    for(int y = menu->y; y < menu->y + menu->numberOfItems; y++)
+    {
+        if(i == menu->selected)
+        {
+            DrawString(menu->console, menu->items[i], menu->x, y, menu->color | menu->bgColor);
+        }else
+            DrawString(menu->console, menu->items[i], menu->x, y, menu->color);
+        i++;
+    }
+}
+
+
+void PlaceCharWindow(Window *window, wchar_t character, int x, int y, WORD color)
+{
+    if(x < window->w-1 && y < window->h-1 && x >= 0 && y >= 0)
+        PlaceChar(window->console, character, (window->x+1)+x, (window->y+1)+y, color);
+}
+
+
+void WindowFillRect(Window *window, wchar_t character, int x, int y, int w, int h, WORD color)
+{
+    for(int i = x; i < x+w; i++)
+    {
+        for(int j = y; j < y+h; j++)
+        {
+            if(i < window->w-1 && j < window->h-1 && i >= 0 && j >= 0)
+                PlaceChar(window->console, character, (window->x+1)+i, (window->y+1)+j, color);
+        }
+    }
+}
+
+
 // CLEARS THE SCREEN
 void Clear(Console *console)
 {
     for(int i = 0; i < console->bufferSize; i++)
     {
         console->screenBuffer[i].Char.UnicodeChar = ' ';
-        console->screenBuffer[i].Attributes = 7;
+        console->screenBuffer[i].Attributes = console->backgroundColor;
     }
 }
 
@@ -134,7 +250,7 @@ void DrawString(Console *console, const char *string, int x, int y, WORD Color)
     wchar_t c = string[i];
     while(c != '\0')
     {
-        DrawChar(console, c, x+i, y, Color);
+        PlaceChar(console, c, x+i, y, Color);
         c = string[++i];
     }
 }
