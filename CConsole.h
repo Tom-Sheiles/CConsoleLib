@@ -115,6 +115,11 @@ void FreeConsoleMemory(Console *console)
 
 void UpdateKeyState(Console *console)
 {
+    CONSOLE_CURSOR_INFO cci;
+    GetConsoleCursorInfo(console->hConsole, &cci);
+    cci.bVisible = FALSE;
+    SetConsoleCursorInfo(console->hConsole, &cci);
+
     for(int i = 0; i < 0xFF; i++)
     {
         int previous = console->previousKeys[i];
@@ -187,9 +192,9 @@ void DrawWindow(Window window)
 }
 
 
-void DrawMenu(Menu *menu)
-{   
-    if(menu->wrapMode == MENU_WRAP){
+void MenuWrapSelected(Menu *menu)
+{
+if(menu->wrapMode == MENU_WRAP){
         menu->selected = menu->selected % menu->numberOfItems;
         if(menu->selected < 0) menu->selected = menu->numberOfItems-1;
     }
@@ -197,7 +202,11 @@ void DrawMenu(Menu *menu)
         if(menu->selected < 0) menu->selected = 0;
         if(menu->selected >= menu->numberOfItems) menu->selected = menu->numberOfItems-1;
     }
+}
 
+void DrawMenu(Menu *menu)
+{   
+    MenuWrapSelected(menu);
 
     int i = 0;
     for(int y = menu->y; y < menu->y + menu->numberOfItems; y++)
@@ -207,6 +216,25 @@ void DrawMenu(Menu *menu)
             DrawString(menu->console, menu->items[i], menu->x, y, menu->color | menu->bgColor);
         }else
             DrawString(menu->console, menu->items[i], menu->x, y, menu->color);
+        i++;
+    }
+}
+
+
+void DrawMenuWindow(Window *window, Menu *menu)
+{
+    MenuWrapSelected(menu);
+
+    int i = 0;
+    for(int y = menu->y; y < menu->y + menu->numberOfItems; y++)
+    {
+        if(y < window->h-1 && y >= 0)
+        {
+            if(i == menu->selected)
+                DrawString(menu->console, menu->items[i], (window->x+1)+menu->x, (window->y+1)+y, menu->color | menu->bgColor);
+            else
+                DrawString(menu->console, menu->items[i], (window->x+1)+menu->x, (window->y+1)+y, menu->color);
+        }
         i++;
     }
 }
