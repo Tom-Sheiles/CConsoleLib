@@ -1,3 +1,6 @@
+#ifndef CCONSOLE_H
+#define CCONSOLE_H
+
 #include <stdlib.h>
 #include <Windows.h>
 #include <WinUser.h>
@@ -282,3 +285,6 @@ void DrawString(Console *console, const char *string, int x, int y, WORD Color)
         c = string[++i];
     }
 }
+
+
+#endif /* CCONSOLE_H */
