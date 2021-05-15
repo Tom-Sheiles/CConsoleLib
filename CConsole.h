@@ -1,3 +1,4 @@
+#pragma once
 #ifndef CCONSOLE_H
 #define CCONSOLE_H
 
@@ -54,7 +55,7 @@ typedef struct Menu
 } Menu;
 
 
-void ConsoleCreateMenu(Menu *menu, const char **items, Console *console, int wrapMode)
+inline void ConsoleCreateMenu(Menu *menu, const char **items, Console *console, int wrapMode)
 {
     menu->items = (const char **)malloc(sizeof(const char *) * menu->numberOfItems);
     menu->items = items;
@@ -65,11 +66,11 @@ void ConsoleCreateMenu(Menu *menu, const char **items, Console *console, int wra
 
 
 // FORWARD DECLARATIONS
-void DrawString(Console *console, const char *string, int x, int y, WORD Color);
-void Clear(Console *console);
+inline void DrawString(Console *console, const char *string, int x, int y, WORD Color);
+inline void Clear(Console *console);
 
 
-void CreateConsole(Console *console)
+inline void CreateConsole(Console *console)
 {
     // ***TODO MAKE AN IN PLACE CONSOLE APP BY GETTING THE CURRENT SCREEN BUFFER ALONG WITH THE SIZE AND PRITING THAT *** //
 
@@ -109,14 +110,14 @@ void CreateConsole(Console *console)
 
 
 // FREES HEAP MEMORY CREATED FOR THE CONSOLE
-void FreeConsoleMemory(Console *console)
+inline void FreeConsoleMemory(Console *console)
 {
     free(console->screenBuffer);
     FreeConsole();
 }
 
 
-void UpdateKeyState(Console *console)
+inline void UpdateKeyState(Console *console)
 {
     CONSOLE_CURSOR_INFO cci;
     GetConsoleCursorInfo(console->hConsole, &cci);
@@ -133,7 +134,7 @@ void UpdateKeyState(Console *console)
 
 
 // DRAWS THE CURRENT SCREEN BUFFER
-void Draw(Console *console)
+inline void Draw(Console *console)
 {
     COORD dwBufferStart = {0, 0};
     WriteConsoleOutput(console->hConsole, console->screenBuffer, console->dwBufferSize, dwBufferStart, &console->dwBytesWritten);
@@ -141,7 +142,7 @@ void Draw(Console *console)
 
 
 // SETS A SINGLE CHARACTER OF THE SCREEN BUFFER AT THE COORDS X, Y
-void DrawChar(Console *console, wchar_t character, int x, int y, WORD Color)
+inline void DrawChar(Console *console, wchar_t character, int x, int y, WORD Color)
 {
     if(x < console->bufferWidth && y < console->bufferHeight && x >= 0 && y >= 0){
         console->screenBuffer[x + console->bufferWidth * y].Char.UnicodeChar = character;
@@ -152,7 +153,7 @@ void DrawChar(Console *console, wchar_t character, int x, int y, WORD Color)
 
 
 // SETS A CHAR IN THE SCREEN BUFFER WITHOUT REDRAWING THE CONSOLE. FASTER THAN DRAW CHAR
-void PlaceChar(Console *console, wchar_t character, int x, int y, WORD Color)
+inline void PlaceChar(Console *console, wchar_t character, int x, int y, WORD Color)
 {
     if(x < console->bufferWidth && y < console->bufferHeight && x >= 0 && y >= 0){
         console->screenBuffer[x + console->bufferWidth * y].Char.UnicodeChar = character;
@@ -161,7 +162,7 @@ void PlaceChar(Console *console, wchar_t character, int x, int y, WORD Color)
 }
 
 
-void ConsoleFillRect(Console *console, wchar_t character, int x, int y, int w, int h, WORD color)
+inline void ConsoleFillRect(Console *console, wchar_t character, int x, int y, int w, int h, WORD color)
 {
     for(int i = x; i < x+w; i++)
     {
@@ -173,7 +174,7 @@ void ConsoleFillRect(Console *console, wchar_t character, int x, int y, int w, i
 }
 
 
-void DrawWindow(Window window)
+inline void DrawWindow(Window window)
 {
     for(int i = window.x; i <= window.x + window.w; i++)
     {
@@ -195,7 +196,7 @@ void DrawWindow(Window window)
 }
 
 
-void MenuWrapSelected(Menu *menu)
+inline void MenuWrapSelected(Menu *menu)
 {
 if(menu->wrapMode == MENU_WRAP){
         menu->selected = menu->selected % menu->numberOfItems;
@@ -207,7 +208,7 @@ if(menu->wrapMode == MENU_WRAP){
     }
 }
 
-void DrawMenu(Menu *menu)
+inline void DrawMenu(Menu *menu)
 {   
     MenuWrapSelected(menu);
 
@@ -224,7 +225,7 @@ void DrawMenu(Menu *menu)
 }
 
 
-void DrawMenuWindow(Window *window, Menu *menu)
+inline void DrawMenuWindow(Window *window, Menu *menu)
 {
     MenuWrapSelected(menu);
 
@@ -243,14 +244,14 @@ void DrawMenuWindow(Window *window, Menu *menu)
 }
 
 
-void PlaceCharWindow(Window *window, wchar_t character, int x, int y, WORD color)
+inline void PlaceCharWindow(Window *window, wchar_t character, int x, int y, WORD color)
 {
     if(x < window->w-1 && y < window->h-1 && x >= 0 && y >= 0)
         PlaceChar(window->console, character, (window->x+1)+x, (window->y+1)+y, color);
 }
 
 
-void WindowFillRect(Window *window, wchar_t character, int x, int y, int w, int h, WORD color)
+inline void WindowFillRect(Window *window, wchar_t character, int x, int y, int w, int h, WORD color)
 {
     for(int i = x; i < x+w; i++)
     {
@@ -264,7 +265,7 @@ void WindowFillRect(Window *window, wchar_t character, int x, int y, int w, int 
 
 
 // CLEARS THE SCREEN
-void Clear(Console *console)
+inline void Clear(Console *console)
 {
     for(int i = 0; i < console->bufferSize; i++)
     {
@@ -275,7 +276,7 @@ void Clear(Console *console)
 
 
 // ADDS A STRING TO THE SCREEN BUFFER STARTING AT THE COORDS X, Y
-void DrawString(Console *console, const char *string, int x, int y, WORD Color)
+inline void DrawString(Console *console, const char *string, int x, int y, WORD Color)
 {
     int i = 0;
     wchar_t c = string[i];
