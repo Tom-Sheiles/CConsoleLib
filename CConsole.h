@@ -250,6 +250,18 @@ inline void PlaceCharWindow(Window *window, wchar_t character, int x, int y, WOR
         PlaceChar(window->console, character, (window->x+1)+x, (window->y+1)+y, color);
 }
 
+inline void DrawStringWindow(Window *window, const char *string, int x, int y, WORD Color)
+{
+    int i = 0;
+    wchar_t c = string[i];
+    while (c != '\0')
+    {
+        PlaceCharWindow(window, c, x+i, y, Color);
+        c = string[++i];
+    }
+    
+}
+
 
 inline void WindowFillRect(Window *window, wchar_t character, int x, int y, int w, int h, WORD color)
 {
@@ -286,6 +298,9 @@ inline void DrawString(Console *console, const char *string, int x, int y, WORD 
         c = string[++i];
     }
 }
+
+
+
 
 
 #endif /* CCONSOLE_H */
